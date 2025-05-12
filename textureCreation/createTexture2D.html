@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body onload="onload()">
+    <canvas id="canvas" style="width: 512px; height: 512px; border: 1px black solid;"></canvas>
+    <button onclick="fill()">Fill</button>
+    <input type="color" id="color" oninput="changeColorHex(this.value)">
+    <input type="range" value="255" min="0" max="255" id="opacity" oninput="changeOpacity(this.value)">
+    <button onclick="print()">Print                                                                                                                                                             </button>
+
+    <script src="../util/classPackage.js"></script>
+
+    <script>
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+
+        let drawing = false;
+        let resolutionX = 32;
+        let resolutionY = 16;
+
+        let buffer = [];
+
+        let loop;
+        let tickRate = 16;
+        let tick = 0;
+
+        let stepX;
+        let stepY;
+
+        let colorR = 255;
+        let colorG = 255;
+        let colorB = 255;
+        let colorA = 255;
+
+        function onload() {
+            canvas.style.height = canvas.height * (resolutionX / resolutionY) + "px";
+
+            Terminal.init();
+
+            stepX = canvas.width / resolutionX;
+            stepY = canvas.height / resolutionY;
+
+            buffer = new Uint8ClampedArray(resolutionX * resolutionY * 4);
+
+            canvas.addEventListener('mousedown', mousedown);
+            canvas.addEventListener('mousemove', mousemove);
+            canvas.addEventListener('mouseup', mouseup);
+
+            fill();
+
+            colorR = 0;
+            colorG = 0;
+            colorB = 0;
+
+            startLoop();
+        }
+
+        function startLoop() {
+            loop = setInterval(function() {
+                draw();
+                tick++;
+            }, tickRate); 
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < resolutionX; i++) {
+                for (let j = 0; j < resolutionY; j++) {
+                    let index = (i + j * resolutionX) * 4;
+
+                    let r = buffer[index + 0];
+                    let g = buffer[index + 1];
+                    let b = buffer[index + 2];
+                    let a = buffer[index + 3];
+
+                    ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+
+                    ctx.fillRect(i * stepX, j * stepY, stepX, stepY);
+                }
+            }
+
+            ctx.lineWidth = "0.1";
+
+            for (let i = 0; i < resolutionX; i++) {
+                for (let j = 0; j < resolutionY; j++) {
+                    ctx.strokeRect(i * stepX, j * stepY, stepX, stepY);
+                }
+            }
+        }
+
+        function fill() {
+            for (let i = 0; i < resolutionX; i++) {
+                for (let j = 0; j < resolutionY; j++) {
+                    let index = (i + j * resolutionX) * 4;
+
+                    buffer[index + 0] = colorR;
+                    buffer[index + 1] = colorG;
+                    buffer[index + 2] = colorB;
+                    buffer[index + 3] = colorA;
+                }
+            }
+        }
+
+        function print() {
+            Terminal.print(buffer);
+        }
+
+
+
+        function mousedown(e) {
+            drawing = true;
+
+            interpretClick(e);
+        }
+
+        function mousemove(e) {
+            interpretClick(e);
+        }
+
+        function mouseup(e) {
+            drawing = false;
+        }
+
+        function interpretClick(e) {
+            if (!drawing) {
+                return;
+            }
+
+            if (e.shiftKey) {
+                pickColor(e.offsetX, e.offsetY);
+            } else {
+                putPixel(e.offsetX, e.offsetY);
+            }
+        }
+
+        function putPixel(offsetX, offsetY) {
+            let x = Math.floor((offsetX / canvas.clientWidth) * resolutionX);
+            let y = Math.floor((offsetY / canvas.clientHeight) * resolutionY);
+
+            if (x < 0 || x >= resolutionX || y < 0 || y >= resolutionY) {
+                return;
+            }
+
+            let index = (x + y * resolutionX) * 4;
+
+            buffer[index + 0] = colorR;
+            buffer[index + 1] = colorG;
+            buffer[index + 2] = colorB;
+            buffer[index + 3] = colorA;
+        }
+
+        function pickColor(offsetX, offsetY) {
+            let x = Math.floor((offsetX / canvas.clientWidth) * resolutionX);
+            let y = Math.floor((offsetY / canvas.clientHeight) * resolutionY);
+
+            if (x < 0 || x >= resolutionX || y < 0 || y >= resolutionY) {
+                return;
+            }
+
+            let index = (x + y * resolutionX) * 4;
+
+            colorR = buffer[index + 0];
+            colorG = buffer[index + 1];
+            colorB = buffer[index + 2];
+            colorA = buffer[index + 3];
+
+            updateColorInput();
+        }
+
+
+
+        function changeColorHex(color) {
+            let cR = color.slice(1, 3);
+            let cG = color.slice(3, 5);
+            let cB = color.slice(5, 7);
+
+            colorR = parseInt(cR, 16);
+            colorG = parseInt(cG, 16);
+            colorB = parseInt(cB, 16);
+        }
+
+        function updateColorInput() {
+            let cR = (colorR).toString(16).padEnd(2, "0");
+            let cG = (colorG).toString(16).padEnd(2, "0");
+            let cB = (colorB).toString(16).padEnd(2, "0");
+
+            let hex = "#" + cR + cG + cB;
+
+            document.getElementById('color').value = hex;
+        }
+
+        function changeOpacity(opacity) {
+            colorA = opacity;
+        }
+    </script>
+</body>
+</html>
