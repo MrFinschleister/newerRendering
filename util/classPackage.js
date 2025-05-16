@@ -340,12 +340,20 @@ class Benchmarker {
         this.currentTime = time;
     }
 
-    toString(precision) {
-        if (precision != undefined) {
-           return "~~ Benchmarker ~~\n   Name: " + this.name + "\n   Average Relative Time: " + Number(this.averageRelativeTime().toFixed(precision)) + "\n   Total Time: " + Number(this.fromInitialization().toFixed(precision));
-        }
+    toString(precision = 20) {
+        let averageRelativeTime = parseFloat(this.averageRelativeTime().toFixed(precision));
+        let fromInitialization = parseFloat(this.fromInitialization().toFixed(precision));
 
-        return "~~ Benchmarker ~~\n   Name: " + this.name + "\n   Average Relative Time: " + this.averageRelativeTime() + "\n   Total Time: " + this.fromInitialization();
+        return "~~ Benchmarker ~~\n   Name: " + this.name + "\n   Average Relative Time: " + averageRelativeTime + "\n   Total Time: " + fromInitialization;
+    }
+
+    reset() {
+        let time = performance.now();
+
+        this.benchmarks = [];
+
+        this.initializationTime = time;
+        this.currentTime = time;
     }
     
     updateCurrentTime() {
@@ -1107,17 +1115,6 @@ class Matrix {
             }
 
             return val;
-
-            for (let i = 0; i < rows; i++) {
-                for (let j = 0; j < columns; j++) {
-                    let coeff = j % (rows / columns + 1) == 0 ? 1 : -1;
-                    let el = src[i][j];
-                    let compSub = this.complementarySubmatrix(i, j);
-                    val += coeff * el * compSub.determinant();
-                }
-            }
-
-            return val;
         }
     }
 
@@ -1453,14 +1450,30 @@ class Vector2 {
         this.y = y;
     }
 
+    static value(value) {
+        return new Vector2(value, value);
+    }
+
     static neutral() {
         return new Vector2(0, 0);
+    }
+
+    static one() {
+        return new Vector2(1, 1);
+    }
+
+    static half() {
+        return new Vector2(0.5, 0.5);
     }
 
     static unitRand() {
         let angle = Math.random() * Math.PI * 2;
 
         return new Vector2(-Math.cos(angle), Math.sin(angle));
+    }
+
+    static rand() {
+        return new Vector2(Math.random(), Math.random());
     }
 
     static rotate(angle) {
@@ -1660,6 +1673,24 @@ class Vector2 {
         }
     }
 
+    min(num) {
+        if (this.x < num) {
+            this.x = num;
+        }
+        if (this.y < num) {
+            this.y = num;
+        }
+    }
+
+    max(num) {
+        if (this.x > num) {
+            this.x = num;
+        }
+        if (this.y > num) {
+            this.y = num;
+        }
+    }
+
     isEqual(v2, tolerance) {
         if (tolerance) {
             if (Math.abs(this.x - v2.x) < tolerance && Math.abs(this.y - v2.y) < tolerance) {
@@ -1732,8 +1763,24 @@ class Vector2 {
         return (this.x <= v2.x && this.y <= v2.y);
     }
 
+    toVector2() {
+        return this.clone();
+    }
+
     toVector3() {
         return new Vector3(this.x, this.y, 1);
+    }
+
+    toVector4() {
+        return new Vector4(this.x, this.y, 1, 1);
+    }
+
+    vectorX() {
+        return new Vector2(this.x, 0);
+    }
+
+    vectorY() {
+        return new Vector2(0, this.y);
     }
 
     toRowMatrix() {
@@ -1756,8 +1803,20 @@ class Vector3 {
         this.z = z;
     }
 
+    static value(value) {
+        return new Vector3(value, value, value);
+    }
+
     static neutral() {
         return new Vector3(0, 0, 0);
+    }
+
+    static one() {
+        return new Vector3(1, 1, 1);
+    }
+
+    static half() {
+        return new Vector3(0.5, 0.5, 0.5);
     }
 
     static unitRand() {
@@ -1785,6 +1844,14 @@ class Vector3 {
 
     static right() {
         return new Vector3(1, 0, 0);
+    }
+
+    static forward() {
+        return new Vector3(0, 0, 1);
+    }
+
+    static backward() {
+        return new Vector3(0, 0, -1);
     }
 
     static from(sourceArr) {
@@ -1965,6 +2032,30 @@ class Vector3 {
         }
     }
 
+    min(num) {
+        if (this.x < num) {
+            this.x = num;
+        }
+        if (this.y < num) {
+            this.y = num;
+        }
+        if (this.z < num) {
+            this.z = num;
+        }
+    }
+
+    max(num) {
+        if (this.x > num) {
+            this.x = num;
+        }
+        if (this.y > num) {
+            this.y = num;
+        }
+        if (this.z > num) {
+            this.z = num;
+        }
+    }
+
     isEqual(v2, tolerance) {
         if (tolerance) {
             if (Math.abs(this.x - v2.x) < tolerance && Math.abs(this.y - v2.y) < tolerance && Math.abs(this.z - v2.z) < tolerance) {
@@ -2068,8 +2159,28 @@ class Vector3 {
         return (this.x <= v2.x && this.y <= v2.y && this.z <= v2.z);
     }
 
+    toVector2() {
+        return new Vector2(this.x, this.y);
+    }
+
+    toVector3() {
+        return this.clone();
+    }
+
     toVector4() {
         return new Vector4(this.x, this.y, this.z, 1);
+    }
+
+    vectorX() {
+        return new Vector3(this.x, 0, 0);
+    }
+
+    vectorY() {
+        return new Vector3(0, this.y, 0);
+    }
+
+    vectorZ() {
+        return new Vector3(0, 0, this.z);
     }
 
     toRowMatrix() {
@@ -2093,8 +2204,20 @@ class Vector4 {
         this.w = w;
     }
 
+    static value(value) {
+        return new Vector4(value, value, value, value);
+    }
+
     static neutral() {
         return new Vector4(0, 0, 0, 0);
+    }
+
+    static one() {
+        return new Vector4(1, 1, 1, 1);
+    }
+
+    static half() {
+        return new Vector4(0.5, 0.5, 0.5, 0.5);
     }
 
     static up() {
@@ -2296,12 +2419,71 @@ class Vector4 {
         }
     }
 
+    min(num) {
+        if (this.x < num) {
+            this.x = num;
+        }
+        if (this.y < num) {
+            this.y = num;
+        }
+        if (this.z < num) {
+            this.z = num;
+        }
+        if (this.w < num) {
+            this.w = num;
+        }
+    }
+
+    max(num) {
+        if (this.x > num) {
+            this.x = num;
+        }
+        if (this.y > num) {
+            this.y = num;
+        }
+        if (this.z > num) {
+            this.z = num;
+        }
+        if (this.w > num) {
+            this.w = num;
+        }
+    }
+
     lerp(v2, weight) {
         return this.sum(new Vector4(v2.x - this.x, v2.y - this.y, v2.z - this.z, v2.w - this.w).scaled(weight));
     }
 
     round() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+        this.z = Math.round(this.z);
+        this.w = Math.round(this.w);
+    }
+
+    rounded() {
         return new Vector4(Math.round(this.x), Math.round(this.y), Math.round(this.z), Math.round(this.w));
+    }
+
+    floor() {
+        this.x = Math.floor(this.x);
+        this.y = Math.floor(this.y);
+        this.z = Math.floor(this.z);
+        this.w = Math.floor(this.w);
+    }
+
+    floored() {
+        return new Vector4(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z), Math.floor(this.w));
+    }
+
+    fastFloor() {
+        this.x = ~~this.x;
+        this.y = ~~this.y;
+        this.z = ~~this.z;
+        this.w = ~~this.w;
+    }
+
+    fastFloored() {
+        return new Vector4(~~this.x, ~~this.y, ~~this.z, ~~this.w);
     }
 
     mod(num) {
@@ -2320,10 +2502,32 @@ class Vector4 {
         return newMatrix;
     }
 
-    toVector3() {
-        let w = this.w;
+    toVector2() {
+        return new Vector2(this.x, this.y);
+    }
 
-        return new Vector3(this.x / w, this.y / w, this.z / w);
+    toVector3() {
+        return new Vector3(this.x, this.y, this.z);
+    }
+
+    toVector4() {
+        return this.clone();
+    }
+
+    vectorX() {
+        return new Vector4(this.x, 0, 0, 0);
+    }
+
+    vectorY() {
+        return new Vector4(0, this.y, 0, 0);
+    }
+
+    vectorZ() {
+        return new Vector4(0, 0, this.z, 0);
+    }
+
+    vectorW() {
+        return new Vector4(0, 0, 0, this.w);
     }
 
     toRGBA() {
@@ -3258,10 +3462,10 @@ class Noise {
 
 class RGBA {
     constructor(r, g, b, a) {
-        this.r = r;
-        this.g = g;
-        this.b = b;
-        this.a = a;
+        this.r = ~~r;
+        this.g = ~~g;
+        this.b = ~~b;
+        this.a = ~~a;
     }
 
     static white() {
@@ -3272,6 +3476,18 @@ class RGBA {
         return new RGBA(0, 0, 0, 255);
     }
 
+    static opacity(opacity) {
+        return new RGBA(255, 255, 255, opacity);
+    }
+
+    static brightness(brightness) {
+        return new RGBA(brightness, brightness, brightness, 255);
+    }
+
+    static value(value) {
+        return new RGBA(value, value, value, value);
+    }
+
     toString() {
         return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a / 255})`;
     }
@@ -3280,8 +3496,76 @@ class RGBA {
         return [this.r, this.g, this.b, this.a];
     }
 
+    clone() {
+        return new RGBA(this.r, this.g, this.b, this.a);
+    }
+
     toVector4() {
         return new Vector4(this.r, this.g, this.b, this.a);
+    }
+
+    add(rgba2) {
+        this.r += rgba2.r;
+        this.g += rgba2.g;
+        this.b += rgba2.b;
+        this.a += rgba2.a;
+    }
+
+    subtract(rgba2) {
+        this.r -= rgba2.r;
+        this.g -= rgba2.g;
+        this.b -= rgba2.b;
+        this.a -= rgba2.a;
+    }
+
+    multiply(rgba2) {
+        this.r *= rgba2.r;
+        this.g *= rgba2.g;
+        this.b *= rgba2.b;
+        this.a *= rgba2.a;
+    }
+
+    divide(rgba2) {
+        this.r /= rgba2.r;
+        this.g /= rgba2.g;
+        this.b /= rgba2.b;
+        this.a /= rgba2.a;
+    }
+
+    sum(rgba2) {
+        return new RGBA(this.r + rgba2.r, this.g + rgba2.g, this.b + rgba2.b, this.a + rgba2.a);
+    }
+
+    difference(rgba2) {
+        return new RGBA(this.r - rgba2.r, this.g - rgba2.g, this.b - rgba2.b, this.a - rgba2.a);
+    }
+
+    product(rgba2) {
+        return new RGBA(this.r * rgba2.r, this.g * rgba2.g, this.b * rgba2.b, this.a * rgba2.a);
+    }
+
+    quotient(rgba2) {
+        return new RGBA(this.r / rgba2.r, this.g / rgba2.g, this.b / rgba2.b, this.a / rgba2.a);
+    }
+
+    scale(scalar) {
+        this.r *= scalar;
+        this.g *= scalar;
+        this.b *= scalar;
+        this.a *= scalar;
+    }
+
+    scaled(scalar) {
+        return new RGBA(this.r * scalar, this.g * scalar, this.b * scalar, this.a * scalar);
+    }
+
+    mix(rgba2, weight) {
+        let r = this.r + (this.r - rgba2.r) * weight;
+        let g = this.g + (this.g - rgba2.g) * weight;
+        let b = this.b + (this.b - rgba2.b) * weight;
+        let a = this.a + (this.a - rgba2.a) * weight;
+
+        return new RGBA(r, g, b, a);
     }
 }
 
@@ -3343,10 +3627,110 @@ class Texture2D {
     }
 
     uv(uv) {
-        let coord = uv.product(this.dimensions).floored();
+        let coord = uv.product(this.dimensions).fastFloored();
+
+        let index = Math.abs(coord.x + coord.y * this.width) % this.bufferLength;
+
+        if (!index) {
+            index = 0;
+        }
+
+        return this.buffer[index];
+    }
+
+    uvComponents(u, v) {
+        u = ~~(u * this.width);
+        v = ~~(v * this.height);
+
+        let index = Math.abs(u + v * this.width) % this.bufferLength;
+
+        if (!index) {
+            index = 0;
+        }
+
+        return this.buffer[index];
+    }
+
+    xy(xy) {
+        let coord = xy.floored();
 
         let index = coord.x + coord.y * this.width;
 
-        return this.buffer[index] || RGBA.white();
+
+        return this.buffer[index % this.bufferLength] || RGBA.white();
+    }
+}
+
+class Math2 {
+    static TAU = Math.PI * 2;
+
+    static degreesToRadians(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+    static radiansToDegrees(radians) {
+        return radians * 180 / Math.PI;
+    }
+
+    static clamp(value, min, max) {
+        return Math.max(Math.min(value, max), min);
+    }
+
+    static map(value, iMin, iMax, eMin, eMax) {
+          return ((value - iMin) / (iMax - iMin)) * (eMax - eMin) + eMin;
+    }
+}
+
+class MouseListener {
+    constructor(target, {mousedown = () => {}, mousemove = () => {}, mouseup = () => {}, mouseenter = () => {}, mouseleave = () => {}}) {
+        this.target = target;
+
+        this.mousedown = mousedown;
+        this.mousemove = mousemove;
+        this.mouseup = mouseup;
+        this.mouseenter = mouseenter;
+        this.mouseleave = mouseleave;
+
+        this.setup();
+    }
+
+    setup() {
+        this.target.addEventListener('mousedown', this.mousedown);
+        this.target.addEventListener('mousemove', this.mousemove);
+        this.target.addEventListener('mouseup', this.mouseup);
+        this.target.addEventListener('mouseenter', this.mouseup);
+        this.target.addEventListener('mouseleave', this.mouseup);
+    }
+
+    setListeners({mousedown = this.mousedown, mousemove = this.mousemove, mouseup = this.mouseup, mouseenter = this.mouseenter, mouseleave = this.mouseleave}) {
+        this.mousedown = mousedown;
+        this.mousemove = mousemove;
+        this.mouseup = mouseup;
+        this.mouseenter = mouseenter;
+        this.mouseleave = mouseleave;
+    }
+}
+
+class KeyboardListener {
+    constructor(target, {keydown = () => {}, keypress = () => {}, keyup = () => {}}) {
+        this.target = target;
+        
+        this.keydown = keydown;
+        this.keypress = keypress;
+        this.keyup = keyup;
+
+        this.setup();
+    }
+
+    setup() {
+        this.target.addEventListener('keydown', this.keydown);
+        this.target.addEventListener('keypress', this.keypress);
+        this.target.addEventListener('keyup', this.keyup);
+    }
+
+    setListeners({keydown = this.keydown, keypress = this.keypress, keyup = this.keyup}) {
+        this.keydown = keydown;
+        this.keypress = keypress;
+        this.keyup = keyup;
     }
 }

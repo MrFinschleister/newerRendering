@@ -184,7 +184,7 @@ function createTwoPartCubeMeshVector3(width, height, depth, centerX, centerY, ce
     ];
 
     let indices2 = [
-        7, 3, 5, 1, 4, 0, 6, 2
+        7, 3, 5, 1, 4, 0, 6, 2,
     ]
 
     let positions1 = indices1.map(a => points[a]);
@@ -193,48 +193,24 @@ function createTwoPartCubeMeshVector3(width, height, depth, centerX, centerY, ce
     return [positions1, positions2];
 }
 
-function createSphereMesh(faces, radius, centerX, centerY, centerZ) {
+function createSphereMeshVector3(width, height, depth, centerX, centerY, centerZ, faces) {
     let positions = [];
     let vertices = [];
 
     let numVertices = Math.floor(Math.sqrt(faces));
 
-    for (let x = 0; x <= numVertices; x++) {
-        for (let y = 0; y <= numVertices; y++) {
-            let theta = 2 * Math.PI * (x / numVertices);
-            let phi = Math.PI / 2 - Math.PI * (y / numVertices);
-
-            let newX = centerX + (radius * Math.cos(phi)) * Math.cos(theta);
-            let newY = centerY + (radius * Math.cos(phi)) * Math.sin(theta);
-            let newZ = centerZ + radius * Math.sin(phi);
-            
-            vertices.push([newX, newY, newZ]);
-        }
-    }
-
-    for (let i = numVertices; i < vertices.length; i++) {
-        positions.push(vertices[i - numVertices]);
-        positions.push(vertices[i]);
-    }
-
-    return positions.flat();
-}
-
-
-function createSphereMeshVector3(faces, radius, centerX, centerY, centerZ) {
-    let positions = [];
-    let vertices = [];
-
-    let numVertices = Math.floor(Math.sqrt(faces));
+    let rX = width / 2;
+    let rY = height / 2;
+    let rZ = depth / 2;
 
     for (let x = 0; x <= numVertices; x++) {
         for (let y = 0; y <= numVertices; y++) {
-            let theta = 2 * Math.PI * (x / numVertices);
+            let theta = 2 * Math.PI * (x / numVertices) - Math.PI / numVertices;
             let phi = Math.PI / 2 - Math.PI * (y / numVertices);
 
-            let newX = centerX + (radius * Math.cos(phi)) * Math.cos(theta);
-            let newY = centerY + (radius * Math.cos(phi)) * Math.sin(theta);
-            let newZ = centerZ + radius * Math.sin(phi);
+            let newX = centerX + rX * Math.cos(phi) * Math.cos(theta);
+            let newY = centerY + rY * Math.cos(phi) * Math.sin(theta);
+            let newZ = centerZ + rZ * Math.sin(phi);
             
             vertices.push(new Vector3(newX, newY, newZ));
         }
