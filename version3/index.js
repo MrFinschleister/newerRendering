@@ -186,7 +186,7 @@ function setup() {
         }
     })
 
-    let numSpheres = 500;
+    let numSpheres = 0;
     let numFaces = 4;
     let rangeX = 5000;
     let rangeY = 2500;
@@ -195,7 +195,7 @@ function setup() {
     let dims = new Vector3(250, 250, 250).scaled(0.2);
 
     for (let i = 0; i < numSpheres; i++) {
-        let sphereStructure = createCubeMeshVector3(1, 1, 1, 0, 0, 0, numFaces);
+        let sphereStructure = createSphereMeshVector3(1, 1, 1, 0, 0, 0, numFaces);
         let loc = new Vector3(Math.random() * rangeX - rangeX / 2, Math.random() * rangeY - rangeY / 2, z);
 
         structures.push(sphereStructure);
@@ -266,7 +266,7 @@ function update() {
     velocity.scale(friction);
 
     let rotStep = new Vector3(0.01, 0.01, 0.01);
-    let rotSpeed = 1;
+    let rotSpeed = 0;
 
     let rot = rotStep.scaled(rotSpeed);
 
