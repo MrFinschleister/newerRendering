@@ -5,7 +5,7 @@ let loop;
 let tickRate = 16;
 let tick = 0;
 
-let zNear = 500;
+let zNear = -500;
 let origin = new Vector3(0, 0, 0);
 
 let type = 1;

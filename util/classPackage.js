@@ -2074,11 +2074,13 @@ class Vector3 {
         return this.sum(new Vector3(v2.x - this.x, v2.y - this.y, v2.z - this.z).scaled(weight));
     }
 
-    scaleZ(near) {
-        let z = this.z;
+    scaleZ(near, origin = Vector3.neutral()) {
+        let toOrigin = origin.difference(this);
 
-        let x = (near * this.x) / -z;
-        let y = (near * this.y) / -z;
+        let z = -toOrigin.z;
+
+        let x = (near * toOrigin.x) / z;
+        let y = (near * toOrigin.y) / z;
         
         return new Vector3(x, y, z);
     }
@@ -3678,6 +3680,50 @@ class Math2 {
 
     static map(value, iMin, iMax, eMin, eMax) {
           return ((value - iMin) / (iMax - iMin)) * (eMax - eMin) + eMin;
+    }
+
+    static smoothstep(t) {
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    static smootherstep(t) {
+        let t3 = 10 * t * t * t;
+        let t4 = 1.5 * t3 * t;
+        let t5 = 0.4 * t4 * t;
+
+        return t5 - t4 + t3;
+    }
+
+    static easeinsine(x) {
+        return 1 - Math.cos((x * Math.PI) / 2);
+    }
+
+    static easeoutsine(x) {
+        return Math.sin((x * Math.PI) / 2);
+    }
+
+    static easeinoutsine(x) {
+        return -(Math.cos(Math.PI * x) - 1) / 2;
+    }
+
+    static easeinquad(x) {
+        return x * x;
+    }
+
+    static easeoutquad(x) {
+        return 1 - (1 - x) * (1 - x);
+    }
+
+    static easeinoutquad(x) {
+        return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    }
+
+    static sigmoid(x) {
+        return 1 / (1 + Math.exp(-x));
+    }
+
+    static sigmoidNormalised(x) {
+        return 1 / (1 + Math.exp(-(x * 10 - 0.5)));
     }
 }
 

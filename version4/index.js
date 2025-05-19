@@ -1,3 +1,93 @@
+class Camera {
+    constructor(origin = Vector3.neutral(), translations = Vector3.neutral(), rotations = Vector3.neutral()) {
+        this.origin = origin;
+        this.translations = translations;
+        this.rotations = rotations;
+
+        this.velocity = Vector3.neutral();
+        this.acceleration = new Vector3(10, 10, 10);
+
+        this.setup();
+    }
+
+    setup() {
+        this.pressedKeys = {};
+
+        this.mouseListener = new MouseListener(document.body, 
+            {
+                mousemove: (e) => {
+                    let totalRotation = Math.PI * 2;
+
+                    let locX = e.movementX;
+                    let locY = e.movementY;
+                    let ratioX = locX / document.body.clientWidth;
+                    let ratioY = locY / document.body.clientHeight;
+
+                    let rotationVector = new Vector3(ratioY, ratioX, 0.0).scaled(totalRotation);
+
+                    this.rotations.add(rotationVector);
+                }
+            }
+        );
+
+        this.keyboardListener = new KeyboardListener(document.body,
+            {
+                keydown: (e) => {
+                    this.pressedKeys[e.code] = true;
+                },
+                keyup: (e) => {
+                    this.pressedKeys[e.code] = false;
+                }
+            }
+        );
+    }
+
+    tick() {
+        let translations = this.translations;
+        let rotations = this.rotations;
+        let velocity = this.velocity;
+        let acceleration = this.acceleration;
+        let pressedKeys = this.pressedKeys;
+
+        let sprintScale = pressedKeys["AltLeft"] ? 2 : 1;
+
+        let movementStepX = acceleration.vectorX().rotateRad(rotations.vectorY().scaled(-1), Vector3.neutral()).scaled(sprintScale);
+        let movementStepY = acceleration.vectorY().scaled(sprintScale);
+        let movementStepZ = acceleration.vectorZ().rotateRad(rotations.vectorY().scaled(-1), Vector3.neutral()).scaled(sprintScale);
+
+        if (pressedKeys["KeyA"]) {
+            velocity.subtract(movementStepX);
+        }
+        if (pressedKeys["KeyD"]) {
+            velocity.add(movementStepX);
+        }
+        if (pressedKeys["KeyW"]) {
+            velocity.add(movementStepZ);
+        }
+        if (pressedKeys["KeyS"]) {
+            velocity.subtract(movementStepZ);
+        }
+        if (pressedKeys["Space"]) {
+            velocity.subtract(movementStepY);
+        }
+        if (pressedKeys["ShiftLeft"]) {
+            velocity.add(movementStepY);
+        }
+        if (pressedKeys["KeyF"]) {
+            document.body.requestFullscreen();
+            document.body.requestPointerLock();
+        }
+
+        let totalVelocity = velocity.magnitude();
+        if (totalVelocity > velocityMax * sprintScale) {
+            velocity.scale(velocityMax * sprintScale / totalVelocity);
+        }
+
+        translations.add(velocity);
+        velocity.scale(friction);
+    }
+}
+
 let canvas;
 let ctx;
 
@@ -13,36 +103,46 @@ let zNear = -500;
 let velocityMax = 10;
 let friction = 0.9;
 
-let origin = new Vector3(0, 0, 0);
-let rotations = new Vector3(0, 0, 0);
-let translations = new Vector3(0, 0, 0);
-let velocity = new Vector3(0, 0, 0);
-let acceleration = new Vector3(10, 10, 10);
+let settings = {
+    vertexType: {
+        triangles: 0,
+        strips: 1,
+    },
 
-let vertexType = 1;
-// 0 => triangles, 1 => triangle strips
-let attributeInterpolationMode = 0;
-// 0 => barycentric, 1 => first vertex, 2 => nearest
-let coordinateInterpolationMode = 0;
-// 0 => uses attribute interpolation mode, 1 => always correct
-// ~~~ both modes recenter the coordinates by adding half the canvas dimensions
-let colorMode = 0;
-// 0 => vertex color, 1 => texture color
-let shadingMode = 0;
-// 0 => none, 1 => depth darker, 2 => depth lighter
+    attributeInterpolation: {
+        smooth: 0,
+        first: 1,
+        nearest: 2,
+    },
+    
+    coordinateInterpolation: {
+        attribute: 0,
+        correct: 1,
+    },
 
-let globalSeed = 0;
-let noise = new Noise(globalSeed);
+    color: {
+        vertex: 0,
+        texture: 1,
+    },
 
-let mouseListener;
-let keyboardListener;
-let pressedKeys = {};
+    shading: {
+        none: 0,
+        depth_darker: 1,
+        depth_lighter: 2,
+    }
+}
 
-// frequency, roughness, amplitude, persistence, cellSize, octaves, contrast
-noise.settings(1, 2.5, 1, 0.25, 32, 5, 1);
+let vertexType = settings.vertexType.triangles;
+let attributeInterpolationMode = settings.attributeInterpolation.nearest;
+let coordinateInterpolationMode = settings.coordinateInterpolation.attribute;
+let colorMode = settings.color.vertex;
+let shadingMode = settings.shading.none;
+
+let noise;
+let camera;
 
 let structures = [
-    createSphereMeshVector3(1, 1, 1, 0, 0, 0, 625),
+    createIcosphereMesh(1, 1, 1, 0, 0, 0, 1),
 ];
 
 let dimensions = [
@@ -53,15 +153,10 @@ let locations = [
     new Vector3(0, 0, 500),
 ];
 
-let strips;
-
-let vertColors;
-
-let texCoordsUV;
-
-let textureIndices = [
-    0, 0, 0,
-];
+let strips = [];
+let vertexColors = [];
+let texCoordsUV = [];
+let textureIndices = [];
 
 let defaultDimensions = new Vector3(250, 250, 250);
 let defaultLocation = new Vector3(0, 0, 500);
@@ -73,21 +168,8 @@ let defaultTexCoordsUV = [
 ];
 let defaultTextureIndex = 0;
 
-let noiseBufferWidth = 128;
-let noiseBufferHeight = 128;
-
-let noiseTexture = noise.perlinBuffer(noiseBufferWidth, noiseBufferHeight, 0.5, 0.5);
-
-let textures = [
-    new Texture2D(
-        noiseBufferWidth, noiseBufferHeight,
-        Array.from(new Array(noiseBufferWidth * noiseBufferHeight)).map((val, index) => {
-            let noiseVal = noiseTexture[index] * 0.5 + 0.5;
-            
-            return RGBA.brightness(noiseVal * 255);
-        })
-    ),
-];
+let noiseTexture;
+let textures;
 
 function mapStrip(index) {
     let dims = dimensions[index] || defaultDimensions;
@@ -97,20 +179,36 @@ function mapStrip(index) {
 }
 
 function mapUV(index) {
+    if (texCoordsUV[index]) {
+        return texCoordsUV[index];
+    }
+
     return structures[index].map(
         (v) => {
-            let x = v.x + 0.5;
-            let y = 1 - (v.y + 0.5);
-            let z = v.z + 0.5;
+            let vNorm = v.normalised();
 
-            let uv = new Vector2(x, y);
+            let angle1 = Math.atan2(vNorm.z, vNorm.x);
+            let angle2 = Math.acos(vNorm.y);
 
+            let value1 = angle1 / (2 * Math.PI) + 0.5;
+            let value2 = angle2 / Math.PI / 2 + 0.5;
+
+            if (!value1) {
+                return Vector2.neutral();
+            }
+
+            let uv = new Vector2(value1, value2);
+                
             return uv;
         }
     )
 }
 
 function mapNoiseColor(index) {
+    if (vertexColors[index]) {
+        return vertexColors[index];
+    }
+
     let dims = dimensions[index] || defaultDimensions;
 
     return structures[index].map(
@@ -125,11 +223,21 @@ function mapNoiseColor(index) {
 }
 
 function mapPositionColor(index) {
-    let dims = dimensions[index] || defaultDimensions;
+    if (vertexColors[index]) {
+        return vertexColors[index];
+    }
 
     return structures[index].map(
         (v) => {
             return v.scaled(0.5).sum(Vector3.half()).toVector4().scaled(255).toRGBA();
+        }
+    )
+}
+
+function mapValueColor(index, value) {
+    return structures[index].map(
+        (v) => {
+            return RGBA.value(value);
         }
     )
 }
@@ -149,33 +257,14 @@ function setup() {
     canvas = document.getElementById('canvas');
     ctx = canvas.getContext('2d');
 
-    mouseListener = new MouseListener(document.body, 
-        {
-            mousemove: (e) => {
-                let totalRotation = Math.PI * 2;
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
 
-                let locX = e.movementX;
-                let locY = e.movementY;
-                let ratioX = -locX / document.body.clientWidth;
-                let ratioY = -locY / document.body.clientHeight;
+    noise = new Noise(0);
+    noise.settings(1, 2.5, 1, 0.25, 32, 5, 1);
+    // frequency, roughness, amplitude, persistence, cellSize, octaves, contrast
 
-                let rotationVector = new Vector3(ratioY, ratioX, 0.0).scaled(totalRotation);
-
-                rotations.add(rotationVector);
-            }
-        }
-    );
-
-    keyboardListener = new KeyboardListener(document.body,
-        {
-            keydown: (e) => {
-                pressedKeys[e.code] = true;
-            },
-            keyup: (e) => {
-                pressedKeys[e.code] = false;
-            }
-        }
-    );
+    camera = new Camera();
 
     document.body.addEventListener('fullscreenchange', (e) => {
         if (document.fullscreenElement){
@@ -189,34 +278,54 @@ function setup() {
 
             Terminal.show();
         }
-    })
+    });
 
-    let numSpheres = 0;
-    let numFaces = 144;
+    initTextures();
+    initObjects();
+
+    objectiveBenchmarker = new Benchmarker("Objective Time");
+    iterationBenchmarker = new Benchmarker("Iteration Time");
+}
+
+function initTextures() {
+    let noiseBufferWidth = 256;
+    let noiseBufferHeight = 256;
+
+    noiseTexture = noise.perlinBuffer(noiseBufferWidth, noiseBufferHeight, 0.5, 0.5)
+
+    textures = [
+        new Texture2D(
+            noiseBufferWidth, noiseBufferHeight,
+            Array.from(new Array(noiseBufferWidth * noiseBufferHeight)).map((val, index) => {
+                let noiseVal = noiseTexture[index] * 0.5 + 0.5;
+                
+                return RGBA.brightness(noiseVal * 255);
+            })
+        ),
+    ];
+}
+
+function initObjects() {
+    let numObjects = 250;
+    let numFaces = 1;
     let rangeX = 10000;
     let rangeY = 10000;
     let rangeZ = 10000;
 
     let dims = new Vector3(250, 250, 250);
 
-    for (let i = 0; i < numSpheres; i++) {
-        let sphereStructure = createSphereMeshVector3(1, 1, 1, 0, 0, 0, numFaces);
+    for (let i = 0; i < numObjects; i++) {
+        let objectStructure = createIcosphereMesh(1, 1, 1, 0, 0, 0, numFaces);
         let loc = new Vector3(Math.random() * rangeX - rangeX / 2, Math.random() * rangeY - rangeY / 2, Math.random() * rangeZ - rangeZ / 2);
 
-        structures.push(sphereStructure);
+        structures.push(objectStructure);
         dimensions.push(dims.clone());
         locations.push(loc);
     }
 
     strips = structures.map((a, index) => mapStrip(index));
-    vertColors = structures.map((a, index) => mapPositionColor(index));
+    vertexColors = structures.map((a, index) => mapPositionColor(index, 200));
     texCoordsUV = structures.map((a, index) => mapUV(index));
-
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
-
-    objectiveBenchmarker = new Benchmarker("Objective Time");
-    iterationBenchmarker = new Benchmarker("Iteration Time");
 }
 
 function startLoop() {
@@ -225,7 +334,7 @@ function startLoop() {
             iterationBenchmarker.updateCurrentTime();
 
             update();
-            draw();
+            rasterize();
 
             tick++;
         } catch (error) {
@@ -235,42 +344,7 @@ function startLoop() {
 }
 
 function update() {
-    let sprintScale = pressedKeys["AltLeft"] ? 2 : 1;
-
-    let movementStepX = acceleration.vectorX().rotateRad(rotations.vectorY().scaled(-1), Vector3.neutral()).scaled(sprintScale);
-    let movementStepY = acceleration.vectorY().scaled(sprintScale);
-    let movementStepZ = acceleration.vectorZ().rotateRad(rotations.vectorY().scaled(-1), Vector3.neutral()).scaled(sprintScale);
-
-    if (pressedKeys["KeyA"]) {
-        velocity.subtract(movementStepX);
-    }
-    if (pressedKeys["KeyD"]) {
-        velocity.add(movementStepX);
-    }
-    if (pressedKeys["KeyW"]) {
-        velocity.subtract(movementStepZ);
-    }
-    if (pressedKeys["KeyS"]) {
-        velocity.add(movementStepZ);
-    }
-    if (pressedKeys["Space"]) {
-        velocity.subtract(movementStepY);
-    }
-    if (pressedKeys["ShiftLeft"]) {
-        velocity.add(movementStepY);
-    }
-    if (pressedKeys["KeyF"]) {
-        document.body.requestFullscreen();
-        document.body.requestPointerLock();
-    }
-
-    let totalVelocity = velocity.magnitude();
-    if (totalVelocity > velocityMax * sprintScale) {
-        velocity.scale(velocityMax * sprintScale / totalVelocity);
-    }
-
-    translations.add(velocity);
-    velocity.scale(friction);
+    camera.tick();
 
     let rotStep = new Vector3(0.01, 0.01, 0.01);
     let rotSpeed = 0;
@@ -297,7 +371,12 @@ function update() {
     }
 }
 
-function draw() {
+function rasterize() {
+    let screenScale = new Vector3(1, 1, 1);
+    let origin = camera.origin;
+    let translations = camera.translations;
+    let rotations = camera.rotations;
+
     let width = canvas.width;
     let widthMin1 = width - 1;
     let halfWidth = width / 2;
@@ -320,14 +399,14 @@ function draw() {
     }
 
     let stripsLength = strips.length;
-    let vertColorsLength = vertColors.length;
+    let vertexColorsLength = vertexColors.length;
 
     for (let i = 0; i < stripsLength; i++) {
         let vertices = strips[i];
         let texCoords = texCoordsUV[i] || defaultTexCoordsUV;
         let textureIndex = textureIndices[i] || defaultTextureIndex;
         let texture = textures[textureIndex];
-        let colors = vertColors[i % vertColorsLength];
+        let colors = vertexColors[i % vertexColorsLength];
 
         let verticesLength = vertices.length;
 
@@ -336,7 +415,7 @@ function draw() {
         for (let j = 0; j < verticesLength; j++) {
             let vertex = vertices[j];
 
-            let fullyTransformed = vertex.sum(translations).rotateRad(rotations, origin).scaleZ(zNear).sum(canvasOffset);
+            let fullyTransformed = vertex.difference(translations).rotateRad(rotations, origin).scaleZ(zNear).product(screenScale).sum(canvasOffset);
 
             newVertices[j] = fullyTransformed;
         }
@@ -397,9 +476,9 @@ function draw() {
                 let {x: u2, y: v2} = texCoords[vert2Index];
                 let {x: u3, y: v3} = texCoords[vert3Index];
 
-                let z1Inverse = 1 / z1 / area;
-                let z2Inverse = 1 / z2 / area;
-                let z3Inverse = 1 / z3 / area;
+                let z1Inverse = 1 / (z1 * area);
+                let z2Inverse = 1 / (z2 * area);
+                let z3Inverse = 1 / (z3 * area);
 
                 minX = Math.max(minX, 0);
                 maxX = Math.min(maxX, widthMin1);
@@ -431,7 +510,6 @@ function draw() {
                     for (let iy = 0; iy < rangeY; iy++) {
                         if (w1_2 >= 0 && w2_2 >= 0 && w3_2 >= 0) {
                             let x, y, z;
-
                             let r, g, b, a;
 
                             switch (attributeInterpolationMode) {
@@ -459,7 +537,7 @@ function draw() {
                                             break;
                                         }
                                         case 1: {
-                                            let u = u1 * w1 + u2 * w2 + u3 * w3; 
+                                            let u = u1 * w1 + u2 * w2 + u3 * w3;
                                             let v = v1 * w1 + v2 * w2 + v3 * w3;
 
                                             ({r, g, b, a} = texture.uvComponents(u, v));
@@ -584,7 +662,7 @@ function draw() {
                                     y = (y1 * w1 + y2 * w2 + y3 * w3) * z - halfHeight;
 
                                     break;
-                                }   
+                                }
                             }
 
                             switch (shadingMode) {
@@ -594,7 +672,7 @@ function draw() {
                                 case 1: {
                                     let depth = Math.sqrt(x * x + y * y + z * z);
 
-                                    let scalar = Math.pow(Math.min(1, zNear / depth), 1.25);
+                                    let scalar = Math.pow(Math.min(1, -zNear / depth), 1.25);
 
                                     r = ~~(r * scalar);
                                     g = ~~(g * scalar);
@@ -605,7 +683,7 @@ function draw() {
                                 case 2: {
                                     let depth = Math.sqrt(x * x + y * y + z * z);
                                     
-                                    let scalar = Math .cbrt(depth / zNear);
+                                    let scalar = Math.cbrt(depth / -zNear);
 
                                     r = ~~(r * scalar);
                                     g = ~~(g * scalar);
