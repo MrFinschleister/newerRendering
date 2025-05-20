@@ -27,11 +27,11 @@ class Camera {
 
                     this.rotations.add(rotationVector);
 
-		            if (this.rotations.x > Math.PI / 2) {
-			            this.rotations.x = Math.PI / 2;
-		            } else if (this.rotations.x < -Math.PI / 2) {
-			            this.rotations.x = -Math.PI / 2;
-		            }
+		    if (this.rotations.x > Math.PI / 2) {
+			this.rotations.x = Math.PI / 2;
+		    } else if (this.rotations.x < -Math.PI / 2) {
+			this.rotations.x = -Math.PI / 2;
+		    }
                 }
             }
         );
@@ -56,6 +56,9 @@ class Camera {
         let pressedKeys = this.pressedKeys;
 
         let sprintScale = pressedKeys["AltLeft"] ? 2 : 1;
+
+	let warpFactor = 16;
+	zNear = zNearDefault * (1 + (1 - sprintScale) / warpFactor);
 
         let movementStepX = acceleration.vectorX().rotateRad(rotations.vectorY().scaled(-1), Vector3.neutral()).scaled(sprintScale);
         let movementStepY = acceleration.vectorY().scaled(sprintScale);
@@ -105,7 +108,8 @@ let resetTicks = 1000;
 let objectiveBenchmarker;
 let iterationBenchmarker;
 
-let zNear = -500;
+let zNearDefault = -500;
+let zNear = zNearDefault;
 let velocityMax = 10;
 let friction = 0.9;
 
