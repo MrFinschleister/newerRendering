@@ -26,6 +26,12 @@ class Camera {
                     let rotationVector = new Vector3(ratioY, ratioX, 0.0).scaled(totalRotation);
 
                     this.rotations.add(rotationVector);
+
+		            if (this.rotations.x > Math.PI / 2) {
+			            this.rotations.x = Math.PI / 2;
+		            } else if (this.rotations.x < -Math.PI / 2) {
+			            this.rotations.x = -Math.PI / 2;
+		            }
                 }
             }
         );
@@ -133,7 +139,7 @@ let settings = {
 }
 
 let vertexType = settings.vertexType.triangles;
-let attributeInterpolationMode = settings.attributeInterpolation.nearest;
+let attributeInterpolationMode = settings.attributeInterpolation.smooth;
 let coordinateInterpolationMode = settings.coordinateInterpolation.attribute;
 let colorMode = settings.color.vertex;
 let shadingMode = settings.shading.none;
@@ -306,7 +312,7 @@ function initTextures() {
 }
 
 function initObjects() {
-    let numObjects = 250;
+    let numObjects = 500;
     let numFaces = 1;
     let rangeX = 10000;
     let rangeY = 10000;
@@ -315,7 +321,8 @@ function initObjects() {
     let dims = new Vector3(250, 250, 250);
 
     for (let i = 0; i < numObjects; i++) {
-        let objectStructure = createIcosphereMesh(1, 1, 1, 0, 0, 0, numFaces);
+        let rand = Math.random();
+        let objectStructure = rand > 0.5 ? createIcosphereMesh(1, 1, 1, 0, 0, 0, numFaces) : createCubeMeshTriangles(1, 1, 1, 0, 0, 0, numFaces);
         let loc = new Vector3(Math.random() * rangeX - rangeX / 2, Math.random() * rangeY - rangeY / 2, Math.random() * rangeZ - rangeZ / 2);
 
         structures.push(objectStructure);
@@ -330,8 +337,10 @@ function initObjects() {
 
 function startLoop() {
     loop = setInterval(function() {
-        try {
+        try {            
             iterationBenchmarker.updateCurrentTime();
+
+    	    Terminal.clear();
 
             update();
             rasterize();
@@ -735,7 +744,6 @@ function rasterize() {
 
     let benchmarkerPrecision = 2;
 
-    Terminal.clear();
     Terminal.print(objectiveBenchmarker.toString(benchmarkerPrecision));
     Terminal.print(iterationBenchmarker.toString(benchmarkerPrecision));
     Terminal.newLine();
