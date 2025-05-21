@@ -195,7 +195,8 @@ function createSphereMeshVector3(width, height, depth, centerX, centerY, centerZ
 }
 
 function createIcosphereMesh(width, height, depth, centerX, centerY, centerZ, bisections) {
-    let radiusVec = new Vector3(width / 2, height / 2, depth / 2);
+    let dimVec = new Vector3(width / 2, height / 2, depth / 2);
+    let cenVec = new Vector3(centerX, centerY, centerZ);
 
     let a = 0.525731112119133606;
     let c = 0.850650808352039932;
@@ -241,7 +242,7 @@ function createIcosphereMesh(width, height, depth, centerX, centerY, centerZ, bi
         faces = faces2;
     }
 
-    return faces.map((a) => a.map((v) => v.normalised().product(radiusVec))).flat();
+    return faces.flat().map((v) => v.normalised().product(dimVec).sum(cenVec));
 }
 
 function createCubeMeshTriangles(width, height, depth, centerX, centerY, centerZ) {
@@ -258,7 +259,7 @@ function createCubeMeshTriangles(width, height, depth, centerX, centerY, centerZ
         new Vector3( -1, -1, -1), // - + + 
         new Vector3( +1, +1, -1), // + - +
         new Vector3( -1, +1, -1), // - - +
-    ].map(v => v.product(dimVec).sum(cenVec));
+    ];
 
     let indices = [
         [0, 1, 2], [1, 3, 2], // front
@@ -269,9 +270,9 @@ function createCubeMeshTriangles(width, height, depth, centerX, centerY, centerZ
         [1, 5, 3], [5, 7, 3], // left
     ]
 
-    let positions = indices.map((a) => a.map((i) => vertices[i]));
+    let faces = indices.map((a) => a.map((i) => vertices[i]));
 
-    return positions.flat();
+    return faces.flat().map((v) => v.product(dimVec).sum(cenVec));
 }
 
 function createCubeMeshStrip(width, height, depth, centerX, centerY, centerZ) {
@@ -295,4 +296,53 @@ function createCubeMeshStrip(width, height, depth, centerX, centerY, centerZ) {
     let positions = facesConfig.map(a => pointConfig[a]);
 
     return positions;
+}
+
+function createBisectedCubeMesh(width, height, depth, centerX, centerY, centerZ, bisections) {
+    let dimVec = new Vector3(width / 2, height / 2, depth / 2);
+    let cenVec = new Vector3(centerX, centerY, centerZ);
+
+    let vertices = [
+        new Vector3( +1, -1, +1), // + + - 
+        new Vector3( -1, -1, +1), // - + -
+        new Vector3( +1, +1, +1), // + - -
+        new Vector3( -1, +1, +1), // - - -
+
+        new Vector3( +1, -1, -1), // + + +
+        new Vector3( -1, -1, -1), // - + + 
+        new Vector3( +1, +1, -1), // + - +
+        new Vector3( -1, +1, -1), // - - +
+    ];
+
+    let indices = [
+        [0, 1, 2], [1, 3, 2], // front
+        [4, 6, 5], [5, 6, 7], // back
+        [0, 4, 1], [1, 4, 5], // top
+        [2, 3, 6], [3, 7, 6], // bottom
+        [0, 2, 4], [4, 2, 6], // right
+        [1, 5, 3], [5, 7, 3], // left
+    ]
+
+    let faces = indices.map((a) => a.map((i) => vertices[i]));
+
+    for (let i = 0; i < bisections; i++) {
+        let faces2 = [];
+
+        for (let j = 0; j < faces.length; j++) {
+            let triangle = faces[j];
+
+            let a = triangle[0].average(triangle[1]);
+            let b = triangle[0].average(triangle[2]);
+            let c = triangle[1].average(triangle[2]);
+
+            faces2.push([triangle[0], a, b]);
+            faces2.push([triangle[1], c, a]);
+            faces2.push([triangle[2], b, c])
+            faces2.push([a, c, b]);
+        }
+
+        faces = faces2;
+    }
+
+    return faces.flat().map((v) => v.product(dimVec).sum(cenVec));
 }

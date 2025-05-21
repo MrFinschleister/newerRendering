@@ -167,12 +167,24 @@ class Terminal {
         Terminal.collapsed = !Terminal.collapsed;
     }
 
-    static hide() {
-        Terminal.el.style.display = "none";
+    static toggleVisibility() {
+        if (Terminal.visible) {
+            Terminal.hide();
+        } else {
+            Terminal.show();
+        }
     }
 
     static show() {
         Terminal.el.style.display = "inline";
+
+        Terminal.visible = true;
+    }
+
+    static hide() {
+        Terminal.el.style.display = "none";
+
+        Terminal.visible = false;
     }
 
     static fuck() {
@@ -1445,7 +1457,7 @@ class RegressionCalculator {
 }
 
 class Vector2 {
-    constructor(x, y) {
+    constructor(x = 0, y = x) {
         this.x = x;
         this.y = y;
     }
@@ -1797,7 +1809,7 @@ class Vector2 {
 }
 
 class Vector3 {
-    constructor(x, y, z) {
+    constructor(x = 0, y = x, z = y) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -2199,7 +2211,7 @@ class Vector3 {
 }
 
 class Vector4 {
-    constructor(x, y, z, w) {
+    constructor(x = 0, y = x, z = y, w = z) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -3463,7 +3475,7 @@ class Noise {
 }
 
 class RGBA {
-    constructor(r, g, b, a) {
+    constructor(r = 0, g = r, b = g, a = g) {
         this.r = ~~r;
         this.g = ~~g;
         this.b = ~~b;
