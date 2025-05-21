@@ -20,7 +20,7 @@ function rasterize() {
     let rotations = camera.rotations;
 
     let colorBuffer = new Uint8ClampedArray(width4 * height);
-    let depthBuffer = new Float16Array(width * height);
+    let depthBuffer = new Float32Array(width * height);
 
     let canvasOffset = new Vector3(width / 2, height / 2, 0);
 
